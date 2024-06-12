@@ -1,0 +1,36 @@
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]
+
+[tool.poetry]
+authors = [
+  "Alexander Regueiro <alex@noldorin.com>",
+]
+description = "Manage playlists on a Plex server"
+license = "BSD-3-Clause"
+maintainers = [
+  "Alexander Regueiro <alex@noldorin.com>",
+]
+name = "plex-playlist-manager"
+readme = "README.md"
+version = "0.1.0"
+
+[tool.poetry.dependencies]
+colorama = "^0.4.6"
+docstring_parser = "^0.15"
+plexapi = "^4.15.13"
+python = "^3.9"
+tqdm = "^2.2.3"
+typer-cloup = "^0.11.0"
+
+[tool.poetry.dev-dependencies]
+black = "^22.12.0"
+isort = "^5.12.0"
+mypy = "^0.991"
+pytest = "^7.2.2"
+
+[tool.poetry.scripts]
+plex-playlist-manager = "plex_playlist_manager.main:app"
+
+[tool.isort]
+profile = "black"
