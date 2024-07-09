@@ -8,9 +8,9 @@ import cloup
 import typer_cloup as typer
 from cloup.constraints import mutually_exclusive
 from plexapi.audio import Album, Artist, Audio, Track
-from plexapi.base import MediaContainer
+from plexapi.base import MediaContainer, PlexObject
 from plexapi.exceptions import BadRequest
-from plexapi.library import MusicSection
+from plexapi.library import LibrarySection, MusicSection
 from plexapi.media import Media, MediaPart
 from plexapi.myplex import MyPlexAccount, PlexServer
 from plexapi.playlist import Playlist
@@ -20,6 +20,7 @@ from typer_cloup.core import TyperCommand, TyperGroup, TyperOption
 
 from . import __version__
 from .apple_music import AppleMusicLibrary
+from .plex import plex_batch
 from .util import batched
 
 
@@ -39,6 +40,41 @@ _plex_username: Optional[str] = None
 _plex_password: Optional[str] = None
 _plex_server_name: Optional[str] = None
 _plex_library_name: Optional[str] = None
+
+
+def playlist_items(playlist: Playlist) -> Iterable[PlexObject]:
+    if playlist.radio:
+        return []
+
+    if playlist._items is None:
+        key = f"{playlist.key}/items"
+        items = list(
+            tqdm(
+                plex_batch(playlist.fetchItems, ekey=key),
+                unit="tracks",
+            )
+        )
+        playlist._items = items
+
+    return playlist._items
+
+
+def section_search_tracks(section: MusicSection, **kwargs: Any) -> Iterable[Track]:
+    return list(
+        tqdm(
+            plex_batch(section.searchTracks, **kwargs),
+            unit="tracks",
+        )
+    )
+
+
+def section_search_albums(section: MusicSection, **kwargs: Any) -> Iterable[Album]:
+    return list(
+        tqdm(
+            plex_batch(section.searchAlbums, **kwargs),
+            unit="albums",
+        )
+    )
 
 
 def print_version(ctx: typer.Context, param: TyperOption, value: bool) -> None:
@@ -210,11 +246,11 @@ def stats():
     secho(" Done.")
 
     secho("Fetching Plex tracks...", nl=False)
-    plex_tracks = cast(MediaContainer[Track], plex_music_section.searchTracks())
+    plex_tracks = cast(MediaContainer[Track], section_search_tracks(plex_music_section))
     secho(" Done.")
 
     secho("Fetching Plex albums...", nl=False)
-    plex_albums = cast(Iterable[Album], plex_music_section.searchAlbums())
+    plex_albums = cast(Iterable[Album], section_search_albums(plex_music_section))
     secho(" Done.")
 
     echo(f"{len(plex_tracks):n} tracks")
@@ -230,11 +266,12 @@ def playlists():
     secho(" Done.")
 
     secho("Fetching Plex playlists...", nl=False)
-    plex_playlists = cast(Iterable[Playlist], plex_music_section.playlists("audio"))
+    plex_playlists = cast(Iterable[Playlist], plex_music_section.playlists())
     secho(" Done.")
 
     for plex_playlist in plex_playlists:
-        echo(f"{plex_playlist.title} ({len(plex_playlist.items()):n} tracks)")
+        plex_playlist_items = playlist_items(plex_playlist)
+        echo(f"{plex_playlist.title} ({len(plex_playlist_items):n} tracks)")
 
 
 @app.command()
